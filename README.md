@@ -15,7 +15,7 @@ The solution consists of two files:
 
 Shibboleth SP provides an `AttributeChecker` handler that validates a user session against a list of required attributes **before** completing the login. If one or more attributes are missing, the SP redirects the user to a configurable error template (`attrChecker.html`) instead of completing the login.
 
-The template uses Shibboleth's `<shibmlp>` markup language to render dynamic content (SP target URL, IdP entityID, received/missing attributes) directly in the page. It also uses the `Metadata` `AttributeExtractor` to pull display name and contact information directly from the IdP's federation metadata, with graceful fallbacks for IdPs that do not publish `mdui:UIInfo` or contact elements.
+The template uses Shibboleth's `<shibmlp>` markup language to render dynamic content (SP entityID, IdP entityID, received/missing attributes) directly in the page. It also uses the `Metadata` `AttributeExtractor` to pull display name and contact information directly from the IdP's federation metadata, with graceful fallbacks for IdPs that do not publish `mdui:UIInfo` or contact elements.
 
 ---
 
@@ -69,11 +69,16 @@ Add the `Metadata` type `AttributeExtractor` alongside the existing `XML` type o
 ```xml
 <!-- Extracts display name and contact info for the authenticating IdP from federation metadata -->
 <AttributeExtractor type="Metadata"
+                    AttributeProfile="attributeProfile"
                     errorURL="errorURL"
                     DisplayName="displayName"
+                    Description="description"
                     InformationURL="informationURL"
                     PrivacyStatementURL="privacyStatementURL"
-                    OrganizationURL="organizationURL">
+                    OrganizationName="organizationName"
+                    OrganizationDisplayName="organizationDisplayName"
+                    OrganizationURL="organizationURL"
+                    registrationAuthority="registrationAuthority">
   <ContactPerson id="Technical-Contact" contactType="technical" formatter="$EmailAddress"/>
   <Logo id="Small-Logo" height="16" width="16" formatter="$_string"/>
 </AttributeExtractor>
@@ -83,7 +88,7 @@ Add the `Metadata` type `AttributeExtractor` alongside the existing `XML` type o
 
 ### 4. Sessions — Errors Element
 
-Add or update the `<Errors>` element inside `<Sessions>` to include the `target` attribute pointing to the `AttributeChecker` handler. This ensures that the `<shibmlp target />` tag in the template is correctly populated with the SP target URL:
+Add or update the `<Errors>` element inside `<Sessions>` to include the `target` attribute pointing to the SP entityID. This ensures that the `<shibmlp target />` tag in the template is correctly populated with the SP entityID value:
 
 `/etc/shibboleth/shibboleth2.xml` → `Sessions` element
 
@@ -98,7 +103,7 @@ Add or update the `<Errors>` element inside `<Sessions>` to include the `target`
         target="PUT-HERE-THE-SP-ENTITYID"/>
 ```
 
-> **Note:** The `target` attribute drives the `<shibmlp target />` tag rendered in `attrChecker.html`. Without it, the SP target URL displayed in the error page and used in the pre-filled email will be empty or incorrect. The `attrChecker.pl` script deliberately does not modify `<shibmlp target />` tags in the template, relying entirely on this configuration.
+> **Note:** The `target` attribute drives the `<shibmlp target />` tag rendered in `attrChecker.html`. Without it, the SP entityID displayed in the error page and used in the pre-filled email will be empty or incorrect. The `attrChecker.pl` script deliberately does not modify `<shibmlp target />` tags in the template, relying entirely on this configuration.
 
 ### 5. Validate and Restart
 
@@ -110,11 +115,7 @@ sudo shibd -t && sudo systemctl restart shibd.service
 
 ## Error Page Template (`attrChecker.html`)
 
-Install the template in `/etc/shibboleth/`:
-
-```bash
-cp attrChecker.html /etc/shibboleth/attrChecker.html
-```
+Copy the [Attribute Checker template](./attrChecker.html) in `/etc/shibboleth/attrChecker.html`
 
 The template renders a user-facing error page with:
 
@@ -186,16 +187,22 @@ If you add or remove required attributes, update three sections of the template 
 
 ### Setup
 
-```bash
-# Install the reference template (only once)
-cp attrChecker.html /etc/shibboleth/attrChecker.orig.html
+#### 1. Install the reference template (only once)
 
-# Install the Perl script
-cp attrChecker.pl /etc/shibboleth/attrChecker.pl
+Copy the [Attribute Checker template](./attrChecker.html) in `/etc/shibboleth/attrChecker.orig.html`
+
+#### 2. Install the Perl script
+
+Copy the [Attribute Checker Perl script](./attrChecker.pl) in `/etc/shibboleth/attrChecker.pl`
+
+#### 3. Make the Perl script executable
+
+```bash
 chmod +x /etc/shibboleth/attrChecker.pl
 ```
 
 > **Important:** `attrChecker.orig.html` is the source of truth for the script. Apply any structural or cosmetic customizations to `attrChecker.orig.html`, **not** to `attrChecker.html`. The script will overwrite `attrChecker.html` on every run.
+
 
 ### Usage
 
@@ -219,7 +226,7 @@ Sample output:
 
 ```
 Attributes from AttributeChecker: cn, displayName, eppn, givenName, schacHomeOrganization, schacHomeOrganizationType, sn
-Backup of dst template saved to /etc/shibboleth/attrChecker.html.bak.1710000000
+Backup of destination template saved to /etc/shibboleth/attrChecker.html.bak.1710000000
 
 1) Generated template: /etc/shibboleth/attrChecker.html
 2) Required attributes: cn, displayName, eppn, givenName, schacHomeOrganization, schacHomeOrganizationType, sn
