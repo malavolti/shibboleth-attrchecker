@@ -88,7 +88,7 @@ Add the `Metadata` type `AttributeExtractor` alongside the existing `XML` type o
 
 ### 4. Sessions — Errors Element
 
-Add or update the `<Errors>` element inside `<Sessions>` to include the `target` attribute pointing to the SP entityID. This ensures that the `<shibmlp target />` tag in the template is correctly populated with the SP entityID value:
+Add or update the `<Errors>` element inside `<Sessions>` to include the `spEntityID` attribute pointing to the SP entityID. This ensures that the `<shibmlp spEntityID />` tag in the template is correctly populated with the SP entityID value:
 
 `/etc/shibboleth/shibboleth2.xml` → `Sessions` element
 
@@ -100,10 +100,10 @@ Add or update the `<Errors>` element inside `<Sessions>` to include the `target`
         localLogout="localLogout.html"
         logoutError="logoutError.html"
         globalLogout="globalLogout.html"
-        target="https://<HOST>/shibboleth"/>
+        spEntityID="https://<HOST>/shibboleth"/>
 ```
 
-> **Note:** The `target` attribute drives the `<shibmlp target />` tag rendered in `attrChecker.html`. Without it, the SP entityID displayed in the error page and used in the pre-filled e-mail will be empty or incorrect. The `attrChecker.pl` script deliberately does not modify `<shibmlp target />` tags in the template, relying entirely on this configuration.
+> **Note:** The `spEntityID` attribute drives the `<shibmlp spEntityID />` tag rendered in `attrChecker.html`. Without it, the SP entityID displayed in the error page and used in the pre-filled e-mail will be empty or incorrect. The `attrChecker.pl` script deliberately does not modify `<shibmlp spEntityID />` tags in the template, relying entirely on this configuration.
 
 ### 5. Validate and Restart
 
@@ -119,7 +119,7 @@ Copy the [Attribute Checker template](./attrChecker.html) in `/etc/shibboleth/at
 
 The template renders a user-facing error page with:
 
-- **Connection summary**: IdP display name (fallback to `entityID` if `mdui:UIInfo` is absent), SP target URL, timestamp, and IdP technical contact email
+- **Connection summary**: IdP display name (fallback to `entityID` if `mdui:UIInfo` is absent), SP entityID, timestamp, and IdP technical contact email
 - **Attribute table**: all required attributes with missing ones highlighted in red
 - **Pre-filled email**: a draft message addressed to the IdP administrator, ready to send via the user's mail client
 - **"Report Problem" button**: opens the mail client with the pre-filled email (disabled automatically if the IdP metadata does not include a technical contact)
