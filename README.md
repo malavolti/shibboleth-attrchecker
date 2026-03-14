@@ -100,10 +100,10 @@ Add or update the `<Errors>` element inside `<Sessions>` to include the `target`
         localLogout="localLogout.html"
         logoutError="logoutError.html"
         globalLogout="globalLogout.html"
-        target="PUT-HERE-THE-SP-ENTITYID"/>
+        target="https://<HOST>/shibboleth"/>
 ```
 
-> **Note:** The `target` attribute drives the `<shibmlp target />` tag rendered in `attrChecker.html`. Without it, the SP entityID displayed in the error page and used in the pre-filled email will be empty or incorrect. The `attrChecker.pl` script deliberately does not modify `<shibmlp target />` tags in the template, relying entirely on this configuration.
+> **Note:** The `target` attribute drives the `<shibmlp target />` tag rendered in `attrChecker.html`. Without it, the SP entityID displayed in the error page and used in the pre-filled e-mail will be empty or incorrect. The `attrChecker.pl` script deliberately does not modify `<shibmlp target />` tags in the template, relying entirely on this configuration.
 
 ### 5. Validate and Restart
 
