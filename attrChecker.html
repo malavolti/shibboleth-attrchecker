@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html 
-        PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" 
-        "DTD/xhtml1-strict.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-        <link rel="stylesheet" type="text/css" href="<shibmlp styleSheet/>" />
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <link rel="stylesheet" type="text/css" href="<shibmlp styleSheet/>" />
   <script type='text/javascript' src='//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js'></script>
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
-        <title>Login failed due to missing user attributes</title>
+  <title>Login failed due to missing user attributes</title>
   <script>
     $(document).ready(function() {
         $("#textarea").val(
@@ -39,9 +37,6 @@
                 .attr("href", "#")
                 .attr("aria-disabled", "true")
                 .text("No technical contact available in IdP metadata");
-            var noContact = '<em class="text-muted">Not available in IdP metadata</em>';
-            document.getElementById("technical").innerHTML  = noContact;
-            document.getElementById("technical2").innerHTML = noContact;
         }
 
         $('#showdetails').click(function() {
@@ -57,7 +52,7 @@
   <div id="msg"/>
     <div class="container">
       <!--PixelTracking-->
-      <img title="track" src="/track.png?idp=<shibmlp entityID/>&amp;miss=<shibmlpifnot displayName>-displayName</shibmlpifnot><shibmlpifnot givenName>-givenName</shibmlpifnot><shibmlpifnot cn>-cn</shibmlpifnot><shibmlpifnot sn>-sn</shibmlpifnot><shibmlpifnot eppn>-eppn</shibmlpifnot><shibmlpifnot schacHomeOrganization>-schacHomeOrganization</shibmlpifnot><shibmlpifnot schacHomeOrganizationType>-schacHomeOrganizationType</shibmlpifnot>" alt="" width="1" height="1" />
+      <img title="track" src="/track.png?idp=<shibmlp entityID/>&amp;miss=<shibmlpifnot cn>-cn</shibmlpifnot><shibmlpifnot displayName>-displayName</shibmlpifnot><shibmlpifnot eppn>-eppn</shibmlpifnot><shibmlpifnot givenName>-givenName</shibmlpifnot><shibmlpifnot schacHomeOrganization>-schacHomeOrganization</shibmlpifnot><shibmlpifnot schacHomeOrganizationType>-schacHomeOrganizationType</shibmlpifnot><shibmlpifnot sn>-sn</shibmlpifnot>" alt="" width="1" height="1" />
       <div class="hero-unit">
         <h2>Login failed due to missing user attributes</h2>
           <p>
@@ -129,25 +124,21 @@
                 </thead>
                 <tbody>
 <!--TableStart-->
-<tr <shibmlpifnot displayName> class='warning text-danger'</shibmlpifnot>>
-        <th>displayName</th>
-        <td><shibmlp displayName /></td>
-</tr>
-<tr <shibmlpifnot givenName> class='warning text-danger'</shibmlpifnot>>
-        <th>givenName</th>
-        <td><shibmlp givenName /></td>
-</tr>
 <tr <shibmlpifnot cn> class='warning text-danger'</shibmlpifnot>>
         <th>cn</th>
         <td><shibmlp cn /></td>
 </tr>
-<tr <shibmlpifnot sn> class='warning text-danger'</shibmlpifnot>>
-        <th>sn</th>
-        <td><shibmlp sn /></td>
+<tr <shibmlpifnot displayName> class='warning text-danger'</shibmlpifnot>>
+        <th>displayName</th>
+        <td><shibmlp displayName /></td>
 </tr>
 <tr <shibmlpifnot eppn> class='warning text-danger'</shibmlpifnot>>
         <th>eppn</th>
         <td><shibmlp eppn /></td>
+</tr>
+<tr <shibmlpifnot givenName> class='warning text-danger'</shibmlpifnot>>
+        <th>givenName</th>
+        <td><shibmlp givenName /></td>
 </tr>
 <tr <shibmlpifnot schacHomeOrganization> class='warning text-danger'</shibmlpifnot>>
         <th>schacHomeOrganization</th>
@@ -156,6 +147,10 @@
 <tr <shibmlpifnot schacHomeOrganizationType> class='warning text-danger'</shibmlpifnot>>
         <th>schacHomeOrganizationType</th>
         <td><shibmlp schacHomeOrganizationType /></td>
+</tr>
+<tr <shibmlpifnot sn> class='warning text-danger'</shibmlpifnot>>
+        <th>sn</th>
+        <td><shibmlp sn /></td>
 </tr>
 <!--TableEnd-->
                 </tbody>
@@ -170,13 +165,15 @@ I tried to log into a service with the entityID "<shibmlp target />" today (<shi
 Unfortunately, the login failed because the <shibmlpif Meta-displayName><shibmlp Meta-displayName /></shibmlpif><shibmlpifnot Meta-displayName>Identity Provider (<shibmlp entityID />)</shibmlpifnot> did not release the requested user attributes to this service. To be able to access this service, I kindly ask you to ensure that our Identity Provider releases my user attributes to <shibmlp target />. Please find a summary of the login attempt below.
 
 The attributes that were not released to the service are:
- * <shibmlpifnot displayName>displayName</shibmlpifnot>
- * <shibmlpifnot givenName>givenName</shibmlpifnot>
  * <shibmlpifnot cn>cn</shibmlpifnot>
- * <shibmlpifnot sn>sn</shibmlpifnot>
+ * <shibmlpifnot displayName>displayName</shibmlpifnot>
  * <shibmlpifnot eppn>eppn</shibmlpifnot>
+ * <shibmlpifnot givenName>givenName</shibmlpifnot>
  * <shibmlpifnot schacHomeOrganization>schacHomeOrganization</shibmlpifnot>
  * <shibmlpifnot schacHomeOrganizationType>schacHomeOrganizationType</shibmlpifnot>
+ * <shibmlpifnot sn>sn</shibmlpifnot>
+
+
 
 Connection summary:
  * IdP:      <shibmlp entityID/><shibmlpif Meta-displayName> (<shibmlp Meta-displayName />)</shibmlpif>
@@ -187,13 +184,14 @@ Best Regards,</textarea>
 <hr>
 </div>
           <p>
-Please contact your home organisation's helpdesk
+<shibmlpifnot Meta-Technical-Contact>
+<shibmlpif Meta-informationURL>Please contact your <a href="<shibmlp Meta-informationURL/>">home organisation's helpdesk</a></shibmlpif>
+<shibmlpifnot Meta-informationURL>Please contact your home organisation's helpdesk</shibmlpifnot>
+</shibmlpifnot>
 <shibmlpif Meta-Technical-Contact>
+Please contact your home organisation's helpdesk
   (here: <span id="technical2"><shibmlp Meta-Technical-Contact/></span>)
 </shibmlpif>
-<shibmlpifnot Meta-Technical-Contact>
-  (<span id="technical2"><em>contact not available in IdP metadata — refer to your institution's IT helpdesk</em></span>)
-</shibmlpifnot>
 and request attribute release for missing attributes.
 <shibmlpif Meta-Technical-Contact>
   To do this, click on the button below. This will open your mail program with the needed technical information to resolve this issue. You can add additional information and review the email before sending it. Alternatively you can copy and paste the request from the <a href="#" id="showdetails2">details</a> text box.
