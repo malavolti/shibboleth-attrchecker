@@ -1,96 +1,257 @@
-## Shibboleth SP attribute checker
+## Shibboleth SP Attribute Checker
 
-The list of attributes released by an IdP varies heavily and occasionally required attributes needed by an SP are not released by the user's IdP. This leads to failed logins and the error page doesn't give clear information of the failure reason (eg. what attributes are missing). You can always check the attributes on an application level. The approach described here is done on the Shibboleth SP level (requires Shibboleth 2.5+) and does not require changes to the application using the attibutes.
+When an Identity Provider (IdP) does not release all the SAML attributes required by a Service Provider (SP), the login fails without giving the user a clear explanation of what went wrong. This tool addresses that gap at the **Shibboleth SP level** (requires Shibboleth SP 3+), without requiring any changes to the protected application.
 
-Shibboleth SP provides a hook for performing attribute checks for required attributes and a attribute extractor for fetching IdP metadata attributes where the login was performed.
+The solution consists of two files:
 
-### Attribute Checker Handler
+| File | Role |
+|---|---|
+| `attrChecker.html` | Error page template rendered by Shibboleth SP |
+| `attrChecker.pl` | Perl script to auto-generate `attrChecker.html` from `attrChecker.orig.html` |
 
-The AttributeChecker validates the user session against attributes specified as a required. If requirements are fulfilled, the login completes otherwise an error page is displayed instead. Note that the required attributes have to be "hard coded" here and kept in sync with the required attributes expressed in the Metadata.
+---
 
-#### Configuration
+## How It Works
 
-Add a sessionHook for attribute checker: sessionHook="/Shibboleth.sso/AttrChecker" to ApplicationDefaults. Also add the metadataAttributePrefix="Meta-" (This will be explained later).
+Shibboleth SP provides an `AttributeChecker` handler that validates a user session against a list of required attributes **before** completing the login. If one or more attributes are missing, the SP redirects the user to a configurable error template (`attrChecker.html`) instead of completing the login.
 
-''In context: /etc/shibboleth/shibboleth2.xml -> ApplicationDefault element''
+The template uses Shibboleth's `<shibmlp>` markup language to render dynamic content (SP entityID, IdP entityID, received/missing attributes) directly in the page. It also uses the `Metadata` `AttributeExtractor` to pull display name and contact information directly from the IdP's federation metadata, with graceful fallbacks for IdPs that do not publish `mdui:UIInfo` or contact elements.
 
-```
+---
+
+## Configuration (`shibboleth2.xml`)
+
+### 1. ApplicationDefaults
+
+Add `sessionHook` and `metadataAttributePrefix` to the `<ApplicationDefaults>` element:
+
+```xml
 <ApplicationDefaults entityID="https://<HOST>/shibboleth"
   REMOTE_USER="eppn persistent-id targeted-id"
   signing="front" encryption="false"
   sessionHook="/Shibboleth.sso/AttrChecker"
-  metadataAttributePrefix="Meta-" >
+  metadataAttributePrefix="Meta-">
 ```
 
-Add the attribute checker handler with the list of required attributes to Sessions (in the example below: eppn, displayName).
+- `sessionHook`: activates the attribute check hook after authentication
+- `metadataAttributePrefix="Meta-"`: prefixes all metadata-extracted attributes with `Meta-`, making them accessible in the template as `<shibmlp Meta-displayName />`, `<shibmlp Meta-Technical-Contact />`, etc.
 
-''/etc/shibboleth/shibboleth2.xml -> Sessions element''
+### 2. Sessions — AttributeChecker Handler
 
+Add the `AttributeChecker` handler inside the `<Sessions>` element with the list of required attributes:
+
+```xml
+<Handler type="AttributeChecker"
+         Location="/AttrChecker"
+         template="attrChecker.html"
+         attributes="eppn displayName cn sn givenName schacHomeOrganization schacHomeOrganizationType"
+         flushSession="true"/>
 ```
-<Handler type="AttributeChecker" Location="/AttrChecker" template="attrChecker.html" attributes="eppn displayName" flushSession="true"/>
-```
 
-If you want to describe more complex scenarios with required attributes, operators such as "AND" and "OR" are available.
+For more complex scenarios, use `AND`/`OR` operators instead of the flat `attributes` list (note: `attrChecker.pl` only supports the flat `attributes` attribute):
 
-```
+```xml
 <Handler type="AttributeChecker" Location="/AttrChecker" template="attrChecker.html" flushSession="true">
- <OR>
-   <Rule require="displayName"/>
-   <AND>
-     <Rule require="givenName"/>
-     <Rule require="surname"/>
-   </AND>
- </OR>
+  <OR>
+    <Rule require="displayName"/>
+    <AND>
+      <Rule require="givenName"/>
+      <Rule require="sn"/>
+    </AND>
+  </OR>
 </Handler>
 ```
 
-Now we have an session hook for the attribute checker to check specified attributes before a user login is completed. For customization of the error page (attrChecker.html) we want to enable the "Attribute Extractor" with the type "metadata" to be able to fetch IdP attributes from the metadata feed. The Attribute we need is the email address of the IdP support contact. We already added metadataAttributePrefix to the ApplicationDefaults element.
+### 3. ApplicationDefaults — Metadata AttributeExtractor
 
-Add the AttributeExtractor element of the type metadata next to the already existing type XML: (<AttributeExtractor type="XML" validate="true" path="attribute-map.xml"/>)
+Add the `Metadata` type `AttributeExtractor` alongside the existing `XML` type one. This allows the template to display the IdP's display name and technical contact from the federation metadata:
 
-''/etc/shibboleth/shibboleth2.xml -> ApplicationDefault element''
-
-```
-<!-- Extracts support information for IdP from its metadata. -->
-<AttributeExtractor type="Metadata" errorURL="errorURL" DisplayName="displayName"
-                    InformationURL="informationURL" PrivacyStatementURL="privacyStatementURL"
-                    OrganizationURL="organizationURL">
-  <ContactPerson id="Support-Contact"  contactType="support" formatter="$EmailAddress" />
+```xml
+<!-- Extracts display name and contact info for the authenticating IdP from federation metadata -->
+<AttributeExtractor type="Metadata"
+                    AttributeProfile="attributeProfile"
+                    errorURL="errorURL"
+                    DisplayName="displayName"
+                    Description="description"
+                    InformationURL="informationURL"
+                    PrivacyStatementURL="privacyStatementURL"
+                    OrganizationName="organizationName"
+                    OrganizationDisplayName="organizationDisplayName"
+                    OrganizationURL="organizationURL"
+                    registrationAuthority="registrationAuthority">
+  <ContactPerson id="Technical-Contact" contactType="technical" formatter="$EmailAddress"/>
   <Logo id="Small-Logo" height="16" width="16" formatter="$_string"/>
 </AttributeExtractor>
 ```
 
-When you modify shibboleth2.xml you can test validity of the configuration file with command "shibd -t". If configuration file is still valid XML you can now restart your shibboleth with "sudo service shibd restart". Shibboleth should anyways reload configuration file if it detects any change on it.
+> **Note:** `id="Technical-Contact"` combined with `metadataAttributePrefix="Meta-"` produces the attribute `Meta-Technical-Contact`, which is what `attrChecker.html` references. If you change the `id`, update the template accordingly.
 
-#### Logging
+### 4. Sessions — Errors Element
 
-Shibboleth SP doesn't track nor log failed logins due to missing attributes. The Shibboleth SP web server can be used for "pixel tracking". This means that you load an image (eg: containing only one transparent pixel) from the web server  from where you can monitor logs and observe access for you image. In the url of your image you can also insert details you want to see, eg: Authentication source (IdP) and missing attributes.
+Add or update the `<Errors>` element inside `<Sessions>` to include the `spEntityID` attribute pointing to the SP entityID. This ensures that the `<shibmlp spEntityID />` tag in the template is correctly populated with the SP entityID value:
 
-Replace the image with your existing one from the following code or comment it out if you dont need it. Example below loads track.png from document root and adds variables like "idp" containing the entityID of the authentication source and "miss" denoting missing attributes.
+`/etc/shibboleth/shibboleth2.xml` → `Sessions` element
 
-''Pixel tracking''
-
+```xml
+<Errors session="sessionError.html"
+        metadata="metadataError.html"
+        access="accessError.html"
+        ssl="sslError.html"
+        localLogout="localLogout.html"
+        logoutError="logoutError.html"
+        globalLogout="globalLogout.html"
+        spEntityID="https://<HOST>/shibboleth"/>
 ```
-<img title="track" src="/track.png?idp=<shibmlp entityID/>&miss=<shibmlpifnot displayName>-displayName</shibmlpifnot><shibmlpifnot givenName>-givenName</shibmlpifnot><shibmlpifnot cn>-cn</shibmlpifnot><shibmlpifnot sn>-sn</shibmlpifnot><shibmlpifnot eduPersonPrinpalName>-eduPersonPrinpalName</shibmlpifnot><shibmlpifnot schacHomeOrganization>-schacHomeOrganization</shibmlpifnot><shibmlpifnot schacHomeOrganizationType>-schacHomeOrganizationType</shibmlpifnot>" alt="" width="1" height="1" />
+
+> **Note:** The `spEntityID` attribute drives the `<shibmlp spEntityID />` tag rendered in `attrChecker.html`. Without it, the SP entityID displayed in the error page and used in the pre-filled e-mail will be empty or incorrect. The `attrChecker.pl` script deliberately does not modify `<shibmlp spEntityID />` tags in the template, relying entirely on this configuration.
+
+### 5. Validate and Restart
+
+```bash
+sudo shibd -t && sudo systemctl restart shibd.service
 ```
 
-#### Template customization
+---
 
-The attrChecker.html is located in the "/etc/shibboleth" directory. If you don't want to edit it by yourself, you can use the ready made template. The template has links to external components such as jquery and bootstrap. They are fetched on the fly from third party sources. Basically there are three locations needing modifications:
+## Error Page Template (`attrChecker.html`)
 
-* The pixel tracking link after the comment "PixelTracking". The Image tag and all required attributes after the variable must be configured here. After "miss=" define all required attributes you updated in shibboleth2.xml using shibboleth tagging. Eg `<shibmlpifnot $attribute>-$attribute</shibmlpifnot>` (this echoes $attribute if it's not received by shibboleth). This example uses "-" as a delimiter.
+Copy the [Attribute Checker template](./attrChecker.html) in `/etc/shibboleth/attrChecker.html`
 
-* The table showing missing attributes between the tags "TableStart" and "TableEnd". You have to insert again all the same attributes as above.
+The template renders a user-facing error page with:
 
-'' Define row for each required attribute (eg: displayName below) ''
+- **Connection summary**: IdP display name (fallback to `entityID` if `mdui:UIInfo` is absent), SP entityID, timestamp, and IdP technical contact email
+- **Attribute table**: all required attributes with missing ones highlighted in red
+- **Pre-filled email**: a draft message addressed to the IdP administrator, ready to send via the user's mail client
+- **"Report Problem" button**: opens the mail client with the pre-filled email (disabled automatically if the IdP metadata does not include a technical contact)
 
+### Fallback behavior for incomplete IdP metadata
+
+The template handles IdPs that do not publish full metadata gracefully:
+
+| Missing metadata element | Fallback behavior |
+|---|---|
+| `mdui:DisplayName` | Falls back to displaying the raw `entityID` |
+| Technical contact email | "Report Problem" button is disabled; user is instructed to contact their institution's IT helpdesk directly |
+
+### Pixel tracking
+
+The template includes a 1×1 transparent image used for server-side logging of failed logins:
+
+```html
+<!--PixelTracking-->
+<img src="/track.png?idp=<shibmlp entityID/>&amp;miss=..." ... />
 ```
-<tr <shibmlpifnot displayName> class='warning text-danger'</shibmlpifnot>>
-  <td>displayName</td>
-  <td><shibmlp displayName /></td>
+
+The `miss=` query string parameter encodes which attributes were missing using `<shibmlpifnot $attr>-$attr</shibmlpifnot>` tags, enabling log analysis per IdP and per missing attribute. Serve `track.png` from your web root and monitor the access log of the SP's web server.
+
+### Manual template customization
+
+If you add or remove required attributes, update three sections of the template manually (or use `attrChecker.pl` to automate this):
+
+**1. Pixel tracking parameter** (after `miss=`, inside `<!--PixelTracking-->`):
+
+```html
+<shibmlpifnot $attr>-$attr</shibmlpifnot>
+```
+
+**2. Attribute table** (between `<!--TableStart-->` and `<!--TableEnd-->`):
+
+```html
+<tr <shibmlpifnot $attr> class='warning text-danger'</shibmlpifnot>>
+  <th>$attr</th>
+  <td><shibmlp $attr /></td>
 </tr>
 ```
 
-* The email template between the tags `<textarea>` and `</textarea>`. After "The attributes that were not released to the service are:". Again define all required attributes using shibboleth tagging like in section 1 ( eg: `<shibmlpifnot $attribute> * $attribute</shibmlpifnot>`). Note that for SP identifier target URL is used instead of entityID. There arent yet any tag for SP entityID so you can replace this target URL manually.
+**3. Email body** (after `The attributes that were not released to the service are:`):
 
-You can also update attrChecker.html with a Perl-script (attrChecker.pl). The script extracts the required attributes from the Attribute Checker handler element in shibboleth2.xml and modifies attrChecker.html accordingly (Note that script doesnt work with complex scenarios using AND and OR operators, it uses only "attributes" attribute from the handler). If you customize attrChecker.html and execute the Perl-script, make a backup of attrChecker.html before executing attrChecker.pl. If the script doesn't find the tags it needs for replacing content, it might break the template. The script updates the PixelTracking link by replacing shibboleth tags between miss= and following ", attribute table rows between "TableStart" and "TableEnd" and after line "The attributes that were not released to the service are:" until the next empty line.
+```html
+ * <shibmlpifnot $attr>$attr</shibmlpifnot>
+```
+
+---
+
+## Automation Script (`attrChecker.pl`)
+
+`attrChecker.pl` automates the manual customization steps above. It reads the required attributes directly from `shibboleth2.xml` and regenerates `attrChecker.html` from a reference template.
+
+> **Limitation:** the script only supports the flat `attributes="..."` syntax in the `AttributeChecker` handler. It does **not** support `AND`/`OR` rule trees.
+
+### File layout expected by the script
+
+| Path | Description |
+|---|---|
+| `/etc/shibboleth/shibboleth2.xml` | Shibboleth SP configuration (read-only) |
+| `/etc/shibboleth/attrChecker.orig.html` | Reference template — **never modified by the script** |
+| `/etc/shibboleth/attrChecker.html` | Generated output — **overwritten on each run** |
+
+### Setup
+
+#### 1. Install the reference template (only once)
+
+Copy the [Attribute Checker template](./attrChecker.html) in `/etc/shibboleth/attrChecker.orig.html`
+
+#### 2. Install the Perl script
+
+Copy the [Attribute Checker Perl script](./attrChecker.pl) in `/etc/shibboleth/attrChecker.pl`
+
+#### 3. Make the Perl script executable
+
+```bash
+chmod +x /etc/shibboleth/attrChecker.pl
+```
+
+> **Important:** `attrChecker.orig.html` is the source of truth for the script. Apply any structural or cosmetic customizations to `attrChecker.orig.html`, **not** to `attrChecker.html`. The script will overwrite `attrChecker.html` on every run.
+
+
+### Usage
+
+```bash
+cd /etc/shibboleth
+perl attrChecker.pl
+```
+
+The script will:
+
+1. Parse `shibboleth2.xml` and extract the `attributes` list from the `AttributeChecker` handler
+2. Load `attrChecker.orig.html` as the base template
+3. Regenerate the three attribute-dependent sections:
+   - pixel tracking `miss=` parameter
+   - attribute table rows (between `<!--TableStart-->` and `<!--TableEnd-->`)
+   - missing attribute list in the email body
+4. Back up the existing `attrChecker.html` to `attrChecker.html.bak.<timestamp>`
+5. Write the new `attrChecker.html`
+
+Sample output:
+
+```
+Attributes from AttributeChecker: cn, displayName, eppn, givenName, schacHomeOrganization, schacHomeOrganizationType, sn
+Backup of destination template saved to /etc/shibboleth/attrChecker.html.bak.1710000000
+
+1) Generated template: /etc/shibboleth/attrChecker.html
+2) Required attributes: cn, displayName, eppn, givenName, schacHomeOrganization, schacHomeOrganizationType, sn
+3) Test: sudo shibd -t && sudo systemctl restart shibd.service
+```
+
+### Typical workflow when changing required attributes
+
+```bash
+# 1. Edit shibboleth2.xml (update the attributes= list in the AttributeChecker handler)
+sudo vim /etc/shibboleth/shibboleth2.xml
+
+# 2. Regenerate attrChecker.html
+sudo perl /etc/shibboleth/attrChecker.pl
+
+# 3. Validate and restart
+sudo shibd -t && sudo systemctl restart shibd.service
+```
+
+---
+
+## Repository Structure
+
+```
+.
+├── attrChecker.html   # Error page template (copy to /etc/shibboleth/)
+└── attrChecker.pl     # Automation script (copy to /etc/shibboleth/)
+```
