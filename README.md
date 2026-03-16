@@ -33,7 +33,6 @@ The solution consists of two files:
    3. [Usage](#usage)
    4. [Typical workflow when changing required attributes](#typical-workflow-when-changing-required-attributes)
 6. [Repository Structure](#repository-structure)
-7. [Thanks](#thanks)
 
 ---
 
@@ -331,10 +330,4 @@ The example shows that `idp.example.org` doesn't send `givenName`,`cn`,`sn`,`epp
 ├── attrChecker.html   # Error page template (copy to /etc/shibboleth/)
 └── attrChecker.pl     # Automation script (copy to /etc/shibboleth/)
 ```
-[[TOP](#index)]
-
-## Thanks
-
-- eduGAIN Wiki: For the original [How to configure Shibboleth SP attribute checker](https://wiki.geant.org/display/eduGAIN/How+to+configure+Shibboleth+SP+attribute+checker) and for [Shibboleth SP attribute checker example - Require REFEDS SIRTFI and REFEDS Research and Scholarship](https://wiki.geant.org/spaces/eduGAIN/pages/121348281/Shibboleth+SP+attribute+checker+example+-+Require+REFEDS+SIRTFI+and+REFEDS+Research+and+Scholarship)
-
 [[TOP](#index)]
